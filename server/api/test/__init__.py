@@ -1,0 +1,1 @@
+# Makes 'api/test' a valid Python package so Django can find tests inside it.
