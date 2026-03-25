@@ -1,0 +1,56 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: team7
+  labels:
+    app: backend
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      imagePullSecrets:
+        - name: gitlab-auth
+      containers:
+        - name: backend
+          image: registry.git.chalmers.se/courses/dit826/2025/team7/backend:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DEBUG
+              value: "True"
+            - name: ALLOWED_HOSTS
+              value: "*"
+            - name: CORS_ALLOWED_ORIGINS
+              value: "http://34.88.161.175"
+            - name: CSRF_TRUSTED_ORIGINS
+              value: "http://34.88.161.175"
+          volumeMounts:
+            - name: sqlite-storage
+              mountPath: /app/persistent
+            - name: media-storage
+              mountPath: /app/media
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              touch /app/persistent/db.sqlite3
+              ln -sf /app/persistent/db.sqlite3 /app/db.sqlite3
+              python manage.py migrate
+              python manage.py create_default_user
+              daphne -b 0.0.0.0 -p 8000 dit826.asgi:application
+      volumes:
+        - name: sqlite-storage
+          persistentVolumeClaim:
+            claimName: sqlite-pvc
+        - name: media-storage
+          persistentVolumeClaim:
+            claimName: media-pvc
